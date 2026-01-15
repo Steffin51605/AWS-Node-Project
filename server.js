@@ -1,83 +1,86 @@
 const express = require("express");
 const app = express();
 const { resolve } = require("path");
-const port = process.env.PORT || 3000;
 
-// importing the dotenv module to use environment variables:
+// Load environment variables
 require("dotenv").config();
 
-const api_key = process.env.SECRET_KEY;
+const port = process.env.PORT || 3000;
+const DOMAIN = process.env.DOMAIN || `http://localhost:${port}`;
 
-const stripe = require("stripe")(api_key);
+// Stripe setup
+const stripe = require("stripe")(process.env.SECRET_KEY);
 
-// ------------ Imports & necessary things here ------------
+// ----------------------
+// Static file setup
+// ----------------------
+const STATIC_DIR = process.env.STATIC_DIR || "public";
+const STATIC_PATH = resolve(__dirname, STATIC_DIR);
 
-// Setting up the static folder:
-// app.use(express.static(resolve(__dirname, "./client")));
-app.use(express.static(resolve(__dirname, process.env.STATIC_DIR)));
-
+app.use(express.static(STATIC_PATH));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// ----------------------
+// Page routes
+// ----------------------
 app.get("/", (req, res) => {
-  const path = resolve(process.env.STATIC_DIR + "/index.html");
-  res.sendFile(path);
+  res.sendFile(resolve(STATIC_PATH, "index.html"));
 });
 
-// creating a route for success page:
 app.get("/success", (req, res) => {
-  const path = resolve(process.env.STATIC_DIR + "/success.html");
-  res.sendFile(path);
+  res.sendFile(resolve(STATIC_PATH, "success.html"));
 });
 
-// creating a route for cancel page:
 app.get("/cancel", (req, res) => {
-  const path = resolve(process.env.STATIC_DIR + "/cancel.html");
-  res.sendFile(path);
+  res.sendFile(resolve(STATIC_PATH, "cancel.html"));
 });
 
-// Workshop page routes:
 app.get("/workshop1", (req, res) => {
-  const path = resolve(process.env.STATIC_DIR + "/workshops/workshop1.html");
-  res.sendFile(path);
+  res.sendFile(resolve(STATIC_PATH, "workshops", "workshop1.html"));
 });
+
 app.get("/workshop2", (req, res) => {
-  const path = resolve(process.env.STATIC_DIR + "/workshops/workshop2.html");
-  res.sendFile(path);
+  res.sendFile(resolve(STATIC_PATH, "workshops", "workshop2.html"));
 });
+
 app.get("/workshop3", (req, res) => {
-  const path = resolve(process.env.STATIC_DIR + "/workshops/workshop3.html");
-  res.sendFile(path);
+  res.sendFile(resolve(STATIC_PATH, "workshops", "workshop3.html"));
 });
 
-// ____________________________________________________________________________________
-
-const domainURL = process.env.DOMAIN;
+// ----------------------
+// Stripe Checkout
+// ----------------------
 app.post("/create-checkout-session/:pid", async (req, res) => {
-  
-  const priceId = req.params.pid;
-  
-  const session = await stripe.checkout.sessions.create({
-    mode: "payment",
-    success_url: `${domainURL}/success?id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${domainURL}/cancel`,
-    payment_method_types: ["card"],
-    line_items: [
-      {
-        price: priceId,
-        quantity: 1,
-      },
-    ],
-    // allowing the use of promo-codes:
-    allow_promotion_codes: true,
-  });
-  res.json({
-    id: session.id,
-  });
+  try {
+    const priceId = req.params.pid;
+
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      success_url: `${DOMAIN}/success?id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${DOMAIN}/cancel`,
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1,
+        },
+      ],
+      allow_promotion_codes: true,
+    });
+
+    res.json({ id: session.id });
+  } catch (error) {
+    console.error("Stripe error:", error);
+    res.status(500).json({ error: "Payment session creation failed" });
+  }
 });
 
-// Server listening:
+// ----------------------
+// Start server
+// ----------------------
 app.listen(port, () => {
-  console.log(`Server listening on port: ${port}`);
-  console.log(`You may access you app at: ${domainURL}`);
+  console.log(`Server running on port ${port}`);
+  console.log(`App URL: ${DOMAIN}`);
+  console.log(`Serving static files from: ${STATIC_PATH}`);
 });
