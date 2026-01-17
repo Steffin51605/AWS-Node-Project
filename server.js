@@ -78,9 +78,11 @@ app.post("/create-checkout-session/:pid", async (req, res) => {
 
 // ----------------------
 // Start server
-// ----------------------
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-  console.log(`App URL: ${DOMAIN}`);
-  console.log(`Serving static files from: ${STATIC_PATH}`);
+// ---------------------
+
+app.listen(port, '0.0.0.0', () => {
+  console.log(`-----------------------------------------`);
+  console.log(`🚀 Server actually listening on port ${port}`);
+  console.log(`🔗 Access it at: http://15.207.112.152:${port}`);
+  console.log(`-----------------------------------------`);
 });
